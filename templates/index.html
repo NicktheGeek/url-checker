@@ -2,66 +2,192 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>URL Checker</title>
 <style>
   :root {
-    --bg: #f7f7f8;
-    --card: #ffffff;
-    --border: #e2e2e6;
-    --text: #1b1c1e;
-    --muted: #6b6f76;
-    --flagged: #c0392b;
-    --flagged-bg: #fdecea;
-    --clean: #1e8e5a;
-    --clean-bg: #e9f7ef;
-    --unknown: #b8860b;
-    --unknown-bg: #fdf6e3;
-    --skipped: #9aa0a6;
-    --skipped-bg: #f1f2f3;
+    --bg: #f5f6f8;
+    --bg-elevated: #ffffff;
+    --border: #e3e5ea;
+    --text: #1a1b1e;
+    --text-muted: #6b7280;
+    --accent: #2f6feb;
+    --accent-hover: #2558c4;
+    --accent-soft: #e8f0fe;
+    --flagged: #c0392b;    --flagged-bg: #fdecea;
+    --clean: #1e8e5a;      --clean-bg: #e8f8ef;
+    --unknown: #a3730a;    --unknown-bg: #fdf3d9;
+    --error: #b34700;      --error-bg: #fdead9;
+    --skipped: #6b7280;    --skipped-bg: #eef0f3;
+    --shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.08);
   }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #131417;
+      --bg-elevated: #1c1e23;
+      --border: #2c2f36;
+      --text: #e8e9ed;
+      --text-muted: #9a9fab;
+      --accent: #5b8def;
+      --accent-hover: #7ba3f5;
+      --accent-soft: rgba(91, 141, 239, 0.14);
+      --flagged: #ff7a6e;    --flagged-bg: rgba(255, 107, 97, 0.13);
+      --clean: #4ade80;      --clean-bg: rgba(74, 222, 128, 0.12);
+      --unknown: #eab308;    --unknown-bg: rgba(234, 179, 8, 0.13);
+      --error: #fb923c;      --error-bg: rgba(251, 146, 60, 0.13);
+      --skipped: #9a9fab;    --skipped-bg: rgba(154, 159, 171, 0.14);
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.25);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #131417;
+    --bg-elevated: #1c1e23;
+    --border: #2c2f36;
+    --text: #e8e9ed;
+    --text-muted: #9a9fab;
+    --accent: #5b8def;
+    --accent-hover: #7ba3f5;
+    --accent-soft: rgba(91, 141, 239, 0.14);
+    --flagged: #ff7a6e;    --flagged-bg: rgba(255, 107, 97, 0.13);
+    --clean: #4ade80;      --clean-bg: rgba(74, 222, 128, 0.12);
+    --unknown: #eab308;    --unknown-bg: rgba(234, 179, 8, 0.13);
+    --error: #fb923c;      --error-bg: rgba(251, 146, 60, 0.13);
+    --skipped: #9a9fab;    --skipped-bg: rgba(154, 159, 171, 0.14);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.25);
+  }
+
   * { box-sizing: border-box; }
   body {
     margin: 0;
-    padding: 2rem 1rem;
     background: var(--bg);
     color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    transition: background 0.2s ease, color 0.2s ease;
   }
-  .wrap { max-width: 720px; margin: 0 auto; }
-  h1 { font-size: 1.4rem; margin-bottom: 0.25rem; }
-  p.sub { color: var(--muted); margin-top: 0; margin-bottom: 1.5rem; font-size: 0.95rem; }
-  form { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; }
-  input[type="text"] {
+  .app { max-width: 760px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+
+  header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; }
+  h1 { font-size: 1.5rem; margin: 0 0 0.2rem; }
+  p.sub { color: var(--text-muted); margin: 0; font-size: 0.92rem; line-height: 1.4; }
+  p.sub code { background: var(--skipped-bg); padding: 0.1rem 0.35rem; border-radius: 4px; font-size: 0.85em; }
+
+  .theme-toggle {
+    flex-shrink: 0;
+    width: 2.4rem; height: 2.4rem;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 1.1rem;
+    display: flex; align-items: center; justify-content: center;
+    transition: transform 0.15s ease, background 0.2s ease;
+  }
+  .theme-toggle:hover { transform: scale(1.06); }
+  .theme-toggle:active { transform: scale(0.94); }
+
+  nav.tabs {
+    display: flex;
+    gap: 0.25rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1.5rem;
+    overflow-x: auto;
+  }
+  nav.tabs button {
+    appearance: none;
+    background: none;
+    border: none;
+    padding: 0.65rem 0.9rem;
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+  nav.tabs button:hover { color: var(--text); }
+  nav.tabs button.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; animation: fadeIn 0.2s ease; }
+
+  form.check-form { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+  input[type="text"], textarea {
     flex: 1;
     padding: 0.7rem 0.9rem;
     border: 1px solid var(--border);
     border-radius: 8px;
     font-size: 0.95rem;
+    background: var(--bg-elevated);
+    color: var(--text);
+    font-family: inherit;
   }
-  button {
+  input[type="text"]:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  textarea { width: 100%; min-height: 7rem; resize: vertical; line-height: 1.5; }
+
+  button.primary {
     padding: 0.7rem 1.2rem;
     border: none;
     border-radius: 8px;
-    background: #2f6feb;
+    background: var(--accent);
     color: white;
     font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    white-space: nowrap;
+  }
+  button.primary:hover:not(:disabled) { background: var(--accent-hover); }
+  button.primary:disabled { opacity: 0.55; cursor: default; }
+
+  button.ghost {
+    padding: 0.45rem 0.8rem;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--bg-elevated);
+    color: var(--text);
+    font-size: 0.82rem;
     cursor: pointer;
   }
-  button:disabled { background: #a9c1ec; cursor: default; }
+  button.ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+  .hint { color: var(--text-muted); font-size: 0.82rem; margin: -0.4rem 0 1rem; }
+
+  .progress-line {
+    display: none;
+    align-items: center;
+    gap: 0.6rem;
+    color: var(--text-muted);
+    font-size: 0.88rem;
+    margin-bottom: 1rem;
+  }
+  .progress-line.show { display: flex; }
+  .spinner {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    animation: spin 0.7s linear infinite;
+  }
+
   .verdict {
     padding: 1rem 1.2rem;
     border-radius: 10px;
     margin-bottom: 1.2rem;
-    font-weight: 600;
+    font-weight: 700;
     display: none;
+    animation: popIn 0.25s ease;
   }
   .verdict.show { display: block; }
   .verdict.SUSPICIOUS { background: var(--flagged-bg); color: var(--flagged); }
   .verdict.NO-ISSUES-FOUND { background: var(--clean-bg); color: var(--clean); }
   .verdict.NO-DATA { background: var(--skipped-bg); color: var(--skipped); }
-  .verdict small { display: block; font-weight: 400; margin-top: 0.2rem; color: inherit; opacity: 0.85; }
+  .verdict small { display: block; font-weight: 400; margin-top: 0.2rem; opacity: 0.9; }
+
   .card {
-    background: var(--card);
+    background: var(--bg-elevated);
     border: 1px solid var(--border);
     border-radius: 10px;
     padding: 0.7rem 1rem;
@@ -70,130 +196,520 @@
     justify-content: space-between;
     align-items: flex-start;
     gap: 1rem;
+    box-shadow: var(--shadow);
+    animation: cardIn 0.28s ease both;
   }
-  .card .left { flex: 1; }
+  .card .left { flex: 1; min-width: 0; }
   .card .service { font-weight: 600; font-size: 0.9rem; }
-  .card .summary { color: var(--muted); font-size: 0.85rem; margin-top: 0.15rem; }
-  .card a { font-size: 0.8rem; color: #2f6feb; }
+  .card .summary { color: var(--text-muted); font-size: 0.85rem; margin-top: 0.15rem; word-break: break-word; }
+  .card a { font-size: 0.8rem; color: var(--accent); }
+
   .pill {
-    font-size: 0.72rem;
+    font-size: 0.7rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.03em;
     padding: 0.25rem 0.6rem;
     border-radius: 999px;
     white-space: nowrap;
+    flex-shrink: 0;
   }
   .pill.flagged { background: var(--flagged-bg); color: var(--flagged); }
-  .pill.clean { background: var(--clean-bg); color: var(--clean); }
-  .pill.unknown, .pill.error { background: var(--unknown-bg); color: var(--unknown); }
+  .pill.clean   { background: var(--clean-bg);   color: var(--clean); }
+  .pill.unknown { background: var(--unknown-bg); color: var(--unknown); }
+  .pill.error   { background: var(--error-bg);   color: var(--error); }
   .pill.skipped { background: var(--skipped-bg); color: var(--skipped); }
-  .meta { color: var(--muted); font-size: 0.8rem; margin-top: 1rem; }
-  .loading { color: var(--muted); font-size: 0.9rem; display: none; }
-  .loading.show { display: block; }
+
+  .meta { color: var(--text-muted); font-size: 0.8rem; margin-top: 1rem; display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; align-items: center; }
+  .meta a, .meta button.ghost { margin-left: auto; }
+
+  /* Batch tab */
+  .batch-item {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 0.75rem;
+    background: var(--bg-elevated);
+    overflow: hidden;
+    animation: cardIn 0.28s ease both;
+  }
+  .batch-item summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+  .batch-item summary::-webkit-details-marker { display: none; }
+  .batch-item summary .url { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+  .batch-item .batch-body { padding: 0 1rem 1rem; border-top: 1px solid var(--border); }
+  .batch-item .batch-body .card { box-shadow: none; margin-top: 0.6rem; margin-bottom: 0; }
+  .batch-summary { display: flex; gap: 0.6rem; flex-wrap: wrap; margin: 1rem 0; font-size: 0.85rem; color: var(--text-muted); }
+
+  /* History tab */
+  .history-row {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 0.6rem;
+    background: var(--bg-elevated);
+    overflow: hidden;
+  }
+  .history-row summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+  }
+  .history-row summary::-webkit-details-marker { display: none; }
+  .history-row .hr-url { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.9rem; font-weight: 500; }
+  .history-row .hr-time { font-size: 0.78rem; color: var(--text-muted); white-space: nowrap; }
+  .history-row .hr-body { padding: 0 1rem 1rem; border-top: 1px solid var(--border); }
+  .history-row .hr-actions { display: flex; gap: 0.5rem; margin: 0.8rem 0 0.2rem; }
+  .empty-state { color: var(--text-muted); font-size: 0.9rem; padding: 1.5rem 0; text-align: center; }
+
+  @keyframes cardIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes popIn { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: none; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 520px) {
+    .app { padding: 1.25rem 0.9rem 3rem; }
+    form.check-form { flex-direction: column; }
+    button.primary { width: 100%; }
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>URL Checker</h1>
-  <p class="sub">Checks a URL against multiple threat-intel sources at once. Sources without an API key in <code>.env</code> show as "skipped", not an error.</p>
+<div class="app">
+  <header>
+    <div>
+      <h1>URL Checker</h1>
+      <p class="sub">Checks a URL against multiple threat-intel sources at once. Sources without an API key in <code>.env</code> show as "skipped" -- expected, not an error.</p>
+    </div>
+    <button class="theme-toggle" id="themeToggle" title="Toggle dark mode" aria-label="Toggle dark mode">&#9788;</button>
+  </header>
 
-  <form id="checkForm">
-    <input type="text" id="urlInput" placeholder="https://example.com/suspicious-link" autocomplete="off" required>
-    <button type="submit" id="submitBtn">Check</button>
-  </form>
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="check">Check</button>
+    <button class="tab-btn" data-tab="batch">Batch</button>
+    <button class="tab-btn" data-tab="history">History</button>
+  </nav>
 
-  <div class="loading" id="loading">Checking against all configured sources...</div>
-  <div class="verdict" id="verdict"></div>
-  <div id="results"></div>
-  <div class="meta" id="meta"></div>
+  <!-- Check tab -->
+  <section class="tab-panel active" id="tab-check">
+    <form class="check-form" id="checkForm">
+      <input type="text" id="urlInput" placeholder="https://example.com/suspicious-link" autocomplete="off" required>
+      <button type="submit" class="primary" id="submitBtn">Check</button>
+    </form>
+
+    <div class="progress-line" id="progressLine">
+      <span class="spinner"></span>
+      <span id="progressText">Checking...</span>
+    </div>
+
+    <div class="verdict" id="verdict"></div>
+    <div id="results"></div>
+    <div class="meta" id="meta" style="display:none;"></div>
+  </section>
+
+  <!-- Batch tab -->
+  <section class="tab-panel" id="tab-batch">
+    <p class="hint">One URL per line. Each is checked in turn (sources for a single URL still run in parallel), so results stream in as they finish.</p>
+    <textarea id="batchInput" placeholder="https://example.com&#10;https://another-site.test/path"></textarea>
+    <div style="margin: 0.75rem 0 0.25rem;">
+      <button class="primary" id="batchBtn">Check All</button>
+    </div>
+    <div class="progress-line" id="batchProgressLine">
+      <span class="spinner"></span>
+      <span id="batchProgressText">Checking...</span>
+    </div>
+    <div class="batch-summary" id="batchSummary"></div>
+    <div id="batchResults"></div>
+  </section>
+
+  <!-- History tab -->
+  <section class="tab-panel" id="tab-history">
+    <div class="meta" style="margin-top:0; margin-bottom: 0.75rem;">
+      <span id="historyCount"></span>
+      <button class="ghost" id="historyRefresh">Refresh</button>
+    </div>
+    <div id="historyList"></div>
+  </section>
 </div>
 
 <script>
-const form = document.getElementById('checkForm');
+// ---------------------------------------------------------------------------
+// Theme
+// ---------------------------------------------------------------------------
+const root = document.documentElement;
+const themeToggle = document.getElementById('themeToggle');
+
+function systemPrefersDark() {
+  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+function applyTheme(theme) {
+  if (theme) root.setAttribute('data-theme', theme);
+  else root.removeAttribute('data-theme');
+  const isDark = theme ? theme === 'dark' : systemPrefersDark();
+  themeToggle.textContent = isDark ? '☀' : '☽';
+}
+(function initTheme() {
+  let stored = null;
+  try { stored = localStorage.getItem('urlchecker-theme'); } catch (e) { /* private mode etc */ }
+  applyTheme(stored);
+})();
+themeToggle.addEventListener('click', () => {
+  const isDark = root.getAttribute('data-theme') === 'dark' || (!root.getAttribute('data-theme') && systemPrefersDark());
+  const next = isDark ? 'light' : 'dark';
+  applyTheme(next);
+  try { localStorage.setItem('urlchecker-theme', next); } catch (e) {}
+});
+
+// ---------------------------------------------------------------------------
+// Tabs
+// ---------------------------------------------------------------------------
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'history') loadHistory();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// SSE-over-fetch helper (EventSource is GET-only; we need POST bodies)
+// ---------------------------------------------------------------------------
+async function streamSSE(url, body, handlers) {
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!resp.ok || !resp.body) {
+    let message = `Request failed (${resp.status})`;
+    try { const data = await resp.json(); message = data.error || message; } catch (e) {}
+    throw new Error(message);
+  }
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let sep;
+    while ((sep = buffer.indexOf('\n\n')) !== -1) {
+      const chunk = buffer.slice(0, sep);
+      buffer = buffer.slice(sep + 2);
+      let event = 'message';
+      let data = '';
+      for (const line of chunk.split('\n')) {
+        if (line.startsWith('event: ')) event = line.slice(7);
+        else if (line.startsWith('data: ')) data += line.slice(6);
+      }
+      if (data && handlers[event]) handlers[event](JSON.parse(data));
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Shared rendering helpers
+// ---------------------------------------------------------------------------
+function buildResultCard(r) {
+  const card = document.createElement('div');
+  card.className = 'card';
+
+  const left = document.createElement('div');
+  left.className = 'left';
+  const service = document.createElement('div');
+  service.className = 'service';
+  service.textContent = r.service;
+  const summary = document.createElement('div');
+  summary.className = 'summary';
+  summary.textContent = r.summary;
+  left.appendChild(service);
+  left.appendChild(summary);
+  if (r.link) {
+    const a = document.createElement('a');
+    a.href = r.link;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.textContent = 'View full report ->';
+    left.appendChild(document.createElement('br'));
+    left.appendChild(a);
+  }
+
+  const pill = document.createElement('span');
+  pill.className = 'pill ' + r.status;
+  pill.textContent = r.status;
+
+  card.appendChild(left);
+  card.appendChild(pill);
+  return card;
+}
+
+function verdictClassName(verdict) {
+  return verdict.replace(/\s+/g, '-');
+}
+
+function relativeTime(epochSeconds) {
+  const diff = Date.now() / 1000 - epochSeconds;
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+  if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+  return Math.floor(diff / 86400) + 'd ago';
+}
+
+// ---------------------------------------------------------------------------
+// Check tab
+// ---------------------------------------------------------------------------
+const checkForm = document.getElementById('checkForm');
 const urlInput = document.getElementById('urlInput');
 const submitBtn = document.getElementById('submitBtn');
-const loading = document.getElementById('loading');
+const progressLine = document.getElementById('progressLine');
+const progressText = document.getElementById('progressText');
 const verdictEl = document.getElementById('verdict');
 const resultsEl = document.getElementById('results');
 const metaEl = document.getElementById('meta');
 
-form.addEventListener('submit', async (e) => {
+checkForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const url = urlInput.value.trim();
   if (!url) return;
 
   submitBtn.disabled = true;
-  loading.classList.add('show');
+  progressLine.classList.add('show');
   verdictEl.classList.remove('show');
   resultsEl.innerHTML = '';
-  metaEl.textContent = '';
+  metaEl.style.display = 'none';
+  let count = 0;
+  progressText.textContent = 'Checking...';
 
   try {
-    const resp = await fetch('/check', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url }),
+    await streamSSE('/check/stream', { url }, {
+      result: (r) => {
+        count += 1;
+        progressText.textContent = `${count} source(s) reported so far...`;
+        resultsEl.appendChild(buildResultCard(r));
+      },
+      done: (report) => {
+        progressLine.classList.remove('show');
+        verdictEl.textContent = report.verdict;
+        verdictEl.className = 'verdict show ' + verdictClassName(report.verdict);
+        const small = document.createElement('small');
+        small.textContent = report.verdict_summary;
+        verdictEl.appendChild(small);
+
+        // Re-render in the aggregator's sorted order to match history/CLI output.
+        resultsEl.innerHTML = '';
+        report.results.forEach(r => resultsEl.appendChild(buildResultCard(r)));
+
+        metaEl.style.display = 'flex';
+        metaEl.innerHTML = '';
+        const summarySpan = document.createElement('span');
+        summarySpan.textContent = `${report.sources_checked} source(s) checked, ${report.sources_skipped} skipped (no key), ${report.elapsed_seconds}s`;
+        metaEl.appendChild(summarySpan);
+        if (report.id) {
+          const exportLink = document.createElement('a');
+          exportLink.href = `/history/${report.id}/export.csv`;
+          exportLink.textContent = 'Export CSV';
+          metaEl.appendChild(exportLink);
+        }
+      },
     });
-    const data = await resp.json();
-    if (!resp.ok) {
-      verdictEl.textContent = data.error || 'Something went wrong';
-      verdictEl.className = 'verdict show SUSPICIOUS';
-      return;
-    }
-    render(data);
   } catch (err) {
-    verdictEl.textContent = 'Could not reach the local server: ' + err;
+    progressLine.classList.remove('show');
+    verdictEl.textContent = 'Could not complete the check';
+    const small = document.createElement('small');
+    small.textContent = String(err.message || err);
+    verdictEl.appendChild(small);
     verdictEl.className = 'verdict show SUSPICIOUS';
   } finally {
     submitBtn.disabled = false;
-    loading.classList.remove('show');
   }
 });
 
-function render(data) {
-  const verdictClass = data.verdict.replace(/\s+/g, '-');
-  verdictEl.textContent = data.verdict;
-  verdictEl.className = 'verdict show ' + verdictClass;
-  const small = document.createElement('small');
-  small.textContent = data.verdict_summary;
-  verdictEl.appendChild(small);
+// ---------------------------------------------------------------------------
+// Batch tab
+// ---------------------------------------------------------------------------
+const batchInput = document.getElementById('batchInput');
+const batchBtn = document.getElementById('batchBtn');
+const batchProgressLine = document.getElementById('batchProgressLine');
+const batchProgressText = document.getElementById('batchProgressText');
+const batchSummary = document.getElementById('batchSummary');
+const batchResults = document.getElementById('batchResults');
 
-  resultsEl.innerHTML = '';
-  for (const r of data.results) {
-    const card = document.createElement('div');
-    card.className = 'card';
+batchInput.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') batchBtn.click();
+});
 
-    const left = document.createElement('div');
-    left.className = 'left';
-    const service = document.createElement('div');
-    service.className = 'service';
-    service.textContent = r.service;
-    const summary = document.createElement('div');
-    summary.className = 'summary';
-    summary.textContent = r.summary;
-    left.appendChild(service);
-    left.appendChild(summary);
-    if (r.link) {
-      const a = document.createElement('a');
-      a.href = r.link;
-      a.target = '_blank';
-      a.rel = 'noopener';
-      a.textContent = 'View full report ->';
-      left.appendChild(document.createElement('br'));
-      left.appendChild(a);
-    }
+batchBtn.addEventListener('click', async () => {
+  const urls = batchInput.value.split('\n').map(s => s.trim()).filter(Boolean);
+  if (!urls.length) return;
 
+  batchBtn.disabled = true;
+  batchProgressLine.classList.add('show');
+  batchSummary.innerHTML = '';
+  batchResults.innerHTML = '';
+  const sections = [];
+
+  urls.forEach((url) => {
+    const item = document.createElement('details');
+    item.className = 'batch-item';
+    item.open = true;
+    const summary = document.createElement('summary');
     const pill = document.createElement('span');
-    pill.className = 'pill ' + r.status;
-    pill.textContent = r.status;
+    pill.className = 'pill skipped';
+    pill.textContent = 'pending';
+    const urlSpan = document.createElement('span');
+    urlSpan.className = 'url';
+    urlSpan.textContent = url;
+    summary.appendChild(urlSpan);
+    summary.appendChild(pill);
+    const body = document.createElement('div');
+    body.className = 'batch-body';
+    item.appendChild(summary);
+    item.appendChild(body);
+    batchResults.appendChild(item);
+    sections.push({ pill, body });
+  });
 
-    card.appendChild(left);
-    card.appendChild(pill);
-    resultsEl.appendChild(card);
+  try {
+    await streamSSE('/check/batch/stream', { urls }, {
+      start: (data) => { batchProgressText.textContent = `Checking ${data.total} URL(s)...`; },
+      'item-start': (data) => { batchProgressText.textContent = `Checking ${data.url}...`; },
+      result: (data) => {
+        sections[data.index].body.appendChild(buildResultCard(data.result));
+      },
+      'item-done': (data) => {
+        const { pill, body } = sections[data.index];
+        pill.className = 'pill ' + (data.report.verdict === 'SUSPICIOUS' ? 'flagged' : data.report.verdict === 'NO DATA' ? 'skipped' : 'clean');
+        pill.textContent = data.report.verdict;
+        body.innerHTML = '';
+        data.report.results.forEach(r => body.appendChild(buildResultCard(r)));
+        if (data.report.id) {
+          const link = document.createElement('a');
+          link.href = `/history/${data.report.id}/export.csv`;
+          link.textContent = 'Export CSV';
+          link.style.display = 'inline-block';
+          link.style.marginTop = '0.6rem';
+          link.style.fontSize = '0.8rem';
+          body.appendChild(link);
+        }
+      },
+      done: (data) => {
+        batchProgressLine.classList.remove('show');
+        batchSummary.innerHTML = '';
+        Object.entries(data.summary).forEach(([verdict, count]) => {
+          if (!count) return;
+          const span = document.createElement('span');
+          span.textContent = `${verdict}: ${count}`;
+          batchSummary.appendChild(span);
+        });
+      },
+    });
+  } catch (err) {
+    batchProgressLine.classList.remove('show');
+    batchProgressText.textContent = 'Batch failed: ' + (err.message || err);
+  } finally {
+    batchBtn.disabled = false;
   }
+});
 
-  metaEl.textContent = `${data.sources_checked} source(s) checked, ${data.sources_skipped} skipped (no key), ${data.elapsed_seconds}s`;
+// ---------------------------------------------------------------------------
+// History tab
+// ---------------------------------------------------------------------------
+const historyList = document.getElementById('historyList');
+const historyCount = document.getElementById('historyCount');
+document.getElementById('historyRefresh').addEventListener('click', loadHistory);
+
+async function loadHistory() {
+  historyList.innerHTML = '<div class="empty-state">Loading...</div>';
+  try {
+    const resp = await fetch('/history');
+    const entries = await resp.json();
+    historyCount.textContent = `${entries.length} check(s) saved`;
+    if (!entries.length) {
+      historyList.innerHTML = '<div class="empty-state">No checks yet -- run one from the Check tab.</div>';
+      return;
+    }
+    historyList.innerHTML = '';
+    entries.forEach(entry => historyList.appendChild(buildHistoryRow(entry)));
+  } catch (err) {
+    historyList.innerHTML = '<div class="empty-state">Could not load history.</div>';
+  }
+}
+
+function buildHistoryRow(entry) {
+  const row = document.createElement('details');
+  row.className = 'history-row';
+
+  const summary = document.createElement('summary');
+  const pill = document.createElement('span');
+  pill.className = 'pill ' + (entry.verdict === 'SUSPICIOUS' ? 'flagged' : entry.verdict === 'NO DATA' ? 'skipped' : 'clean');
+  pill.textContent = entry.verdict;
+  const urlSpan = document.createElement('span');
+  urlSpan.className = 'hr-url';
+  urlSpan.textContent = entry.url;
+  const timeSpan = document.createElement('span');
+  timeSpan.className = 'hr-time';
+  timeSpan.textContent = relativeTime(entry.checked_at);
+  summary.appendChild(pill);
+  summary.appendChild(urlSpan);
+  summary.appendChild(timeSpan);
+
+  const body = document.createElement('div');
+  body.className = 'hr-body';
+  body.innerHTML = '<div class="empty-state">Loading...</div>';
+
+  let loaded = false;
+  row.addEventListener('toggle', async () => {
+    if (!row.open || loaded) return;
+    loaded = true;
+    try {
+      const resp = await fetch(`/history/${entry.id}`);
+      const report = await resp.json();
+      body.innerHTML = '';
+      report.results.forEach(r => body.appendChild(buildResultCard(r)));
+
+      const actions = document.createElement('div');
+      actions.className = 'hr-actions';
+      const exportBtn = document.createElement('a');
+      exportBtn.className = 'ghost';
+      exportBtn.href = `/history/${entry.id}/export.csv`;
+      exportBtn.textContent = 'Export CSV';
+      exportBtn.style.textDecoration = 'none';
+      exportBtn.style.padding = '0.45rem 0.8rem';
+      exportBtn.style.border = '1px solid var(--border)';
+      exportBtn.style.borderRadius = '7px';
+      exportBtn.style.color = 'var(--text)';
+      exportBtn.style.fontSize = '0.82rem';
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'ghost';
+      deleteBtn.textContent = 'Delete';
+      deleteBtn.addEventListener('click', async () => {
+        deleteBtn.disabled = true;
+        await fetch(`/history/${entry.id}`, { method: 'DELETE' });
+        row.remove();
+        historyCount.textContent = `${document.querySelectorAll('.history-row').length} check(s) saved`;
+      });
+      actions.appendChild(exportBtn);
+      actions.appendChild(deleteBtn);
+      body.appendChild(actions);
+    } catch (err) {
+      body.innerHTML = '<div class="empty-state">Could not load this report.</div>';
+    }
+  });
+
+  row.appendChild(summary);
+  row.appendChild(body);
+  return row;
 }
 </script>
 </body>

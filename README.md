@@ -29,7 +29,28 @@ python cli.py "https://fedex@dalsisxgm.shop/query"
 ```bash
 python app.py
 ```
-then open http://127.0.0.1:5000 in your browser.
+then open http://127.0.0.1:5050 in your browser. (Port 5000 is skipped
+because macOS's AirPlay Receiver claims it by default -- if you've disabled
+that in System Settings, feel free to change the port back in `app.py`.)
+
+## Web UI features
+
+- **Check** -- single-URL check. Results stream in via Server-Sent Events as
+  each source finishes, so fast sources (heuristics, Safe Browsing) show up
+  immediately instead of waiting on slow ones (VirusTotal, urlscan.io can
+  take 20-30s on a URL they haven't seen before).
+- **Batch** -- paste a list of URLs (one per line) and check them all in one
+  go; each URL's own sources still run in parallel, results stream in per-URL.
+- **History** -- every finished check (single or batch) is saved to a local
+  `history.db` SQLite file. Browse past checks, expand one to see the full
+  per-source breakdown, or delete entries you don't want kept.
+- **Export** -- any saved report can be downloaded as CSV from its history
+  entry (`/history/<id>/export.csv`).
+- Dark mode (follows your system setting, or toggle manually -- the ☽/☀
+  button in the top right) and a responsive layout for narrow windows.
+
+`history.db` is gitignored, same as `.env` -- it's local-only and never
+meant to be committed.
 
 ## Sources checked
 

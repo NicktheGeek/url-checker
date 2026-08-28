@@ -14,27 +14,28 @@ from checkers import ALL_CHECKS  # noqa: E402  (must come after load_dotenv)
 STATUS_ORDER = {"flagged": 0, "unknown": 1, "error": 2, "clean": 3, "skipped": 4}
 
 
-def check_url(url: str, timeout_per_check: float = 30.0) -> dict:
-    """Run every check in parallel and return an aggregate report."""
-    started = time.time()
-    results = []
+def _run_checks(url: str, timeout_per_check: float = 30.0):
+    """Generator: yields each check's result dict as soon as it completes.
 
+    Every source runs in its own thread so a slow one (VirusTotal, urlscan.io
+    polling an unseen URL) never blocks the fast ones from showing up first.
+    """
     with concurrent.futures.ThreadPoolExecutor(max_workers=len(ALL_CHECKS)) as pool:
         future_to_check = {pool.submit(fn, url): fn for fn in ALL_CHECKS}
         for future in concurrent.futures.as_completed(future_to_check, timeout=timeout_per_check + 5):
             fn = future_to_check[future]
             try:
-                results.append(future.result(timeout=timeout_per_check))
+                yield future.result(timeout=timeout_per_check)
             except Exception as exc:  # noqa: BLE001 - a single bad checker must never sink the run
-                results.append(
-                    {
-                        "service": getattr(fn, "__name__", "unknown check"),
-                        "status": "error",
-                        "summary": f"Checker crashed: {exc}",
-                    }
-                )
+                yield {
+                    "service": getattr(fn, "__name__", "unknown check"),
+                    "status": "error",
+                    "summary": f"Checker crashed: {exc}",
+                }
 
-    results.sort(key=lambda r: STATUS_ORDER.get(r["status"], 9))
+
+def _build_report(url: str, results: list, started: float) -> dict:
+    results = sorted(results, key=lambda r: STATUS_ORDER.get(r["status"], 9))
 
     flagged = [r for r in results if r["status"] == "flagged"]
     checked = [r for r in results if r["status"] not in ("skipped",)]
@@ -59,3 +60,25 @@ def check_url(url: str, timeout_per_check: float = 30.0) -> dict:
         "sources_skipped": len(skipped),
         "elapsed_seconds": round(time.time() - started, 2),
     }
+
+
+def check_url(url: str, timeout_per_check: float = 30.0) -> dict:
+    """Run every check in parallel and return an aggregate report."""
+    started = time.time()
+    results = list(_run_checks(url, timeout_per_check))
+    return _build_report(url, results, started)
+
+
+def check_url_streaming(url: str, timeout_per_check: float = 30.0):
+    """Like check_url, but yields progress as it happens.
+
+    Yields ("result", result_dict) for each source as it finishes, in
+    whatever order they complete, then finally yields ("done", report_dict)
+    with the same shape check_url() returns.
+    """
+    started = time.time()
+    results = []
+    for result in _run_checks(url, timeout_per_check):
+        results.append(result)
+        yield ("result", result)
+    yield ("done", _build_report(url, results, started))
