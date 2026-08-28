@@ -18,6 +18,10 @@ Rename `sample.env` to `.env`. Open `.env` and paste in whichever API keys you a
 blank for now -- those sources will just show as "skipped", not break
 anything. See the comments in `.env` for where to get each key.
 
+A bare domain (no `http://`/`https://`) is assumed to be `https://` -- type
+the scheme explicitly if you actually want to check the plain-`http://`
+version of a site.
+
 ## Run it
 
 **Command line:**
@@ -65,6 +69,7 @@ meant to be committed.
 | Source | Needs a key? | Notes |
 |---|---|---|
 | Local heuristics | No | Userinfo trick, punycode, http vs https, excessive subdomains |
+| Spamhaus DBL | No | Free DNS-based domain blocklist (spam/phish/malware/botnet) |
 | Google Safe Browsing | Yes | Same list Chrome itself uses |
 | VirusTotal | Yes | 70+ engine consensus; free tier is 4 req/min, 500/day |
 | urlscan.io | Yes | Actually visits the URL in a sandbox -- best for brand-new domains |
@@ -72,6 +77,11 @@ meant to be committed.
 | URLhaus | Yes (shared abuse.ch key) | Malware distribution URLs |
 | ThreatFox | Yes (shared abuse.ch key) | Malware/C2 indicators |
 | PhishTank | Yes | Community-reported phishing |
+| AbuseIPDB | Yes | Abuse reports for the URL's resolved IP, not the domain |
+| AlienVault OTX | Yes | Domain checked against community threat pulses |
+| MetaDefender Cloud | Yes | Multi-engine URL reputation (different engine set than VirusTotal) |
+| CriminalIP | Yes | Domain risk report; free tier has a small shared daily scan quota |
+| Cloudflare Radar URL Scanner | Yes | Sandbox scan, similar to urlscan.io; needs an API token (with the "URL Scanner: Edit" permission specifically) + account ID |
 
 ## Adding a source later
 

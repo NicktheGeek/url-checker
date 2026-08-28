@@ -30,7 +30,7 @@ def _normalize_url(raw) -> str:
         return ""
     url = raw.strip()
     if url and not (url.startswith("http://") or url.startswith("https://")):
-        url = "http://" + url
+        url = "https://" + url
     return url
 
 

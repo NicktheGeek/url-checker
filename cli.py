@@ -23,7 +23,9 @@ def main():
         print(f"Usage: python {sys.argv[0]} <url>")
         sys.exit(1)
 
-    url = sys.argv[1]
+    url = sys.argv[1].strip()
+    if url and not (url.startswith("http://") or url.startswith("https://")):
+        url = "https://" + url
     print(f"Checking: {url}\n")
     report = check_url(url)
 
