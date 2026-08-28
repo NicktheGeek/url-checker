@@ -97,6 +97,17 @@ SETTINGS_SCHEMA = [
 ALL_KEYS = {key for service in SETTINGS_SCHEMA for field in service["fields"] for key in field["keys"]}
 
 
+def mask_value(value: str) -> str:
+    """Preview shown in the Settings UI. Never the real value -- safe to
+    send to the browser even on an untrusted network -- just a fixed-length
+    run of bullets plus the last few characters, so it doesn't even leak
+    the real length of a short secret."""
+    if not value:
+        return ""
+    tail = value[-4:] if len(value) > 8 else ""
+    return "•" * 10 + tail
+
+
 def read_current_values() -> dict:
     """Read whatever's actually in .env right now (not os.environ, which
     could be stale if something else edited the file on disk)."""

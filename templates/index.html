@@ -4,6 +4,19 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>URL Checker</title>
+
+<link rel="manifest" href="/static/manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="/static/icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/static/icons/favicon-16.png">
+<link rel="shortcut icon" href="/static/favicon.ico">
+<link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+<meta name="theme-color" content="#f5f6f8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#05060A" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="URL Checker">
+
 <style>
   :root {
     --bg: #f5f6f8;
@@ -302,6 +315,25 @@
   }
   .settings-input-wrap input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
   .settings-toggle { flex-shrink: 0; }
+  .settings-preview {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    padding: 0.55rem 0.8rem;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 0.88rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    letter-spacing: 0.05em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .settings-preview.empty { color: var(--text-muted); font-family: inherit; letter-spacing: normal; font-style: italic; }
+  .settings-edit-btn { flex-shrink: 0; }
 
   @keyframes cardIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -834,22 +866,58 @@ function buildSettingsGroup(service) {
     flabel.textContent = field.label;
     const wrap = document.createElement('div');
     wrap.className = 'settings-input-wrap';
+    wrap.dataset.keys = field.keys.join(',');
+    wrap.dataset.editing = 'false';
+
+    // Read-only preview: the server only ever sends a masked value (last
+    // few characters at most), never the real key -- so there's nothing
+    // here for devtools or a network sniff to read out.
+    const preview = document.createElement('span');
+    preview.className = 'settings-preview' + (field.has_value ? '' : ' empty');
+    preview.textContent = field.has_value ? field.masked : 'Not set';
+
+    // Edit input: starts empty. Clicking "Change"/"Add" swaps the preview
+    // for this; nothing is sent on Save unless you actually type into it.
     const input = document.createElement('input');
     input.type = 'password';
     input.autocomplete = 'off';
     input.spellcheck = false;
-    input.dataset.keys = field.keys.join(',');
-    input.value = field.value || '';
-    const toggle = document.createElement('button');
-    toggle.type = 'button';
-    toggle.className = 'ghost settings-toggle';
-    toggle.textContent = '\u{1F441}';
-    toggle.setAttribute('aria-label', 'Show or hide this value');
-    toggle.addEventListener('click', () => {
+    input.placeholder = 'Enter new value';
+    input.hidden = true;
+
+    const showToggle = document.createElement('button');
+    showToggle.type = 'button';
+    showToggle.className = 'ghost settings-toggle';
+    showToggle.textContent = '\u{1F441}';
+    showToggle.setAttribute('aria-label', "Show or hide what you're typing");
+    showToggle.hidden = true;
+    showToggle.addEventListener('click', () => {
       input.type = input.type === 'password' ? 'text' : 'password';
     });
+
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.className = 'ghost settings-edit-btn';
+    editBtn.textContent = field.has_value ? 'Change' : 'Add';
+    editBtn.addEventListener('click', () => {
+      const editing = wrap.dataset.editing === 'true';
+      wrap.dataset.editing = editing ? 'false' : 'true';
+      preview.hidden = !editing;
+      input.hidden = editing;
+      showToggle.hidden = editing;
+      editBtn.textContent = editing ? (field.has_value ? 'Change' : 'Add') : 'Cancel';
+      if (editing) {
+        input.value = '';
+        input.type = 'password';
+      } else {
+        input.focus();
+      }
+    });
+
+    wrap.appendChild(preview);
     wrap.appendChild(input);
-    wrap.appendChild(toggle);
+    wrap.appendChild(showToggle);
+    wrap.appendChild(editBtn);
     row.appendChild(flabel);
     row.appendChild(wrap);
     group.appendChild(row);
@@ -860,9 +928,22 @@ function buildSettingsGroup(service) {
 
 settingsSaveBtn.addEventListener('click', async () => {
   const values = {};
-  document.querySelectorAll('#settingsList input[data-keys]').forEach(input => {
-    input.dataset.keys.split(',').forEach(key => { values[key] = input.value; });
+  document.querySelectorAll('#settingsList .settings-input-wrap').forEach(wrap => {
+    // Untouched fields (still showing the masked preview, or opened via
+    // "Change" but left blank) are omitted entirely -- the backend only
+    // updates keys present in the request, so everything else is left as-is.
+    if (wrap.dataset.editing !== 'true') return;
+    const input = wrap.querySelector('input');
+    if (!input.value) return;
+    wrap.dataset.keys.split(',').forEach(key => { values[key] = input.value; });
   });
+
+  if (Object.keys(values).length === 0) {
+    settingsStatus.textContent = 'Nothing changed.';
+    setTimeout(() => { settingsStatus.textContent = ''; }, 2500);
+    return;
+  }
+
   settingsSaveBtn.disabled = true;
   settingsStatus.textContent = 'Saving...';
   try {
@@ -874,6 +955,7 @@ settingsSaveBtn.addEventListener('click', async () => {
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.error || 'Save failed');
     settingsStatus.textContent = 'Saved -- takes effect on your next check.';
+    loadSettings();
   } catch (err) {
     settingsStatus.textContent = 'Error: ' + (err.message || err);
   } finally {
@@ -881,6 +963,16 @@ settingsSaveBtn.addEventListener('click', async () => {
     setTimeout(() => { settingsStatus.textContent = ''; }, 4000);
   }
 });
+
+// ---------------------------------------------------------------------------
+// PWA install support -- lets "Add to Home Screen" / "Install app" give this
+// its own icon and a standalone window instead of just a browser bookmark.
+// ---------------------------------------------------------------------------
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/static/sw.js').catch(() => {});
+  });
+}
 </script>
 </body>
 </html>

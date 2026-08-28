@@ -16,7 +16,7 @@ from flask import Flask, Response, jsonify, render_template, request, stream_wit
 
 import history
 from aggregator import check_url, check_url_streaming
-from env_store import ALL_KEYS, SETTINGS_SCHEMA, read_current_values, save_values
+from env_store import ALL_KEYS, SETTINGS_SCHEMA, mask_value, read_current_values, save_values
 
 app = Flask(__name__)
 # Template edits should show up on refresh regardless of debug mode -- this
@@ -47,12 +47,24 @@ def index():
 
 @app.route("/settings")
 def settings():
-    """Every known API key field, grouped by service, with whatever value
-    is currently in .env filled in -- lets the Settings tab render an
-    editable form instead of someone hand-editing .env."""
+    """Every known API key field, grouped by service. Never sends the real
+    value back to the browser -- only a masked preview (last few chars) and
+    whether one is set at all -- so a request/response sniffed on an
+    untrusted network doesn't hand over live API keys. The Settings tab
+    renders these as read-only until "Change"/"Add" is clicked."""
     current = read_current_values()
     schema = [
-        {**service, "fields": [{**f, "value": current.get(f["keys"][0], "")} for f in service["fields"]]}
+        {
+            **service,
+            "fields": [
+                {
+                    **f,
+                    "has_value": bool(current.get(f["keys"][0], "")),
+                    "masked": mask_value(current.get(f["keys"][0], "")),
+                }
+                for f in service["fields"]
+            ],
+        }
         for service in SETTINGS_SCHEMA
     ]
     return jsonify(schema)
@@ -192,4 +204,6 @@ if __name__ == "__main__":
     # would otherwise hand back a live Python console. Turn it on deliberately
     # for active development with:  FLASK_DEBUG=1 python app.py
     debug = os.environ.get("FLASK_DEBUG") == "1"
-    app.run(debug=debug, port=5050, threaded=True)
+    # Bound to 0.0.0.0 (not just 127.0.0.1) so phones/tablets/other computers on
+    # the same WiFi can reach it too -- see README for the LAN-exposure caveat.
+    app.run(debug=debug, host="0.0.0.0", port=5050, threaded=True)

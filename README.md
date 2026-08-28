@@ -5,7 +5,52 @@ pasting it into 3+ separate websites), plus a couple of local heuristics
 (userinfo tricks like `https://fedex@evil.com`, punycode domains, etc.) that
 need no API key at all.
 
-## Setup
+## Quick start (recommended)
+
+You need Python 3 installed (nothing else -- no manual `pip`/`venv` commands).
+
+- **Mac:** double-click `start.command`. First time you do this, Finder may
+  refuse to run it ("cannot be opened because it is from an unidentified
+  developer") -- right-click it, choose **Open**, then confirm once. After
+  that, double-clicking just works.
+- **Windows:** double-click `start.bat`.
+- **Any OS from a terminal:** `python3 start.py`
+
+The first run creates a private `.venv` and installs dependencies into it
+automatically (this takes a few seconds); every run after that just starts
+the server straight away and opens your browser to it. It also copies
+`sample.env` to `.env` for you if you don't have one yet -- add API keys
+afterwards from the app's **Settings** tab (no hand-editing `.env` required,
+though you still can).
+
+The terminal window it opens prints two addresses:
+
+```
+On this computer:      http://127.0.0.1:5050
+On your phone/tablet:  http://192.168.x.x:5050   (same WiFi network)
+```
+
+Open the second address on a phone or tablet connected to the same WiFi,
+then use the browser's **Add to Home Screen** (iOS Safari) or **Install
+app** (Android/desktop Chrome, Edge) option. This installs a real app icon
+that opens in its own window, no browser bar -- the page ships a PWA
+manifest and service worker for exactly this. Desktop browsers can install
+it the same way by visiting either address.
+
+Leave the terminal window open while you're using it on other devices --
+closing it stops the server. Press Ctrl+C in it (or just close the window)
+to stop.
+
+> **Heads up:** because the server now listens on your whole WiFi network
+> (not just this computer), anyone else on that network can reach it too --
+> including the **Settings** page, which shows your API keys in plain text
+> with no login. Fine for a trusted home network; don't run it this way on
+> a shared/public WiFi (coffee shop, office guest network, etc.) unless you
+> add some form of access control first.
+
+## Manual setup (alternative)
+
+If you'd rather manage the virtualenv yourself:
 
 ```bash
 cd url_checker
@@ -22,8 +67,6 @@ A bare domain (no `http://`/`https://`) is assumed to be `https://` -- type
 the scheme explicitly if you actually want to check the plain-`http://`
 version of a site.
 
-## Run it
-
 **Command line:**
 ```bash
 python cli.py "https://fedex@dalsisxgm.shop/query"
@@ -33,9 +76,11 @@ python cli.py "https://fedex@dalsisxgm.shop/query"
 ```bash
 python app.py
 ```
-then open http://127.0.0.1:5050 in your browser. (Port 5000 is skipped
-because macOS's AirPlay Receiver claims it by default -- if you've disabled
-that in System Settings, feel free to change the port back in `app.py`.)
+then open http://127.0.0.1:5050 in your browser -- or, from another device
+on the same WiFi, `http://<this computer's LAN IP>:5050`. (Port 5000 is
+skipped because macOS's AirPlay Receiver claims it by default -- if you've
+disabled that in System Settings, feel free to change the port back in
+`app.py`.)
 
 Flask's debug mode (auto-reload + the interactive Werkzeug traceback/code
 console) is off by default -- a bad request that trips an unhandled
@@ -60,6 +105,9 @@ FLASK_DEBUG=1 python app.py
   entry (`/history/<id>/export.csv`).
 - Dark mode (follows your system setting, or toggle manually -- the ☽/☀
   button in the top right) and a responsive layout for narrow windows.
+- **Installable as an app** -- on a phone, tablet, or desktop browser, "Add
+  to Home Screen" / "Install app" gives it a real icon and its own window
+  (no address bar), backed by a PWA manifest + service worker.
 
 `history.db` is gitignored, same as `.env` -- it's local-only and never
 meant to be committed.
