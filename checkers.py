@@ -293,14 +293,15 @@ def check_ipqs(url: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# 5. URLhaus (abuse.ch) -- no key required, but an Auth-Key raises rate limits
+# 5. URLhaus (abuse.ch) -- abuse.ch now requires a free Auth-Key for every
+#    request (get one at https://auth.abuse.ch/); it's no longer optional.
 # ---------------------------------------------------------------------------
 def check_urlhaus(url: str) -> dict:
     service = "URLhaus"
-    headers = {}
     auth_key = os.environ.get("URLHAUS_AUTH_KEY", "").strip()
-    if auth_key:
-        headers["Auth-Key"] = auth_key
+    if not auth_key:
+        return _skipped(service, "URLHAUS_AUTH_KEY")
+    headers = {"Auth-Key": auth_key}
     try:
         resp = requests.post(
             "https://urlhaus-api.abuse.ch/v1/url/",
@@ -335,15 +336,16 @@ def check_urlhaus(url: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# 6. ThreatFox (abuse.ch) -- no key required for community search
+# 6. ThreatFox (abuse.ch) -- abuse.ch now requires a free Auth-Key for every
+#    request (get one at https://auth.abuse.ch/); it's no longer optional.
 # ---------------------------------------------------------------------------
 def check_threatfox(url: str) -> dict:
     service = "ThreatFox"
     domain = urllib.parse.urlparse(url).hostname or url
-    headers = {}
     auth_key = os.environ.get("THREATFOX_AUTH_KEY", "").strip()
-    if auth_key:
-        headers["Auth-Key"] = auth_key
+    if not auth_key:
+        return _skipped(service, "THREATFOX_AUTH_KEY")
+    headers = {"Auth-Key": auth_key}
     try:
         resp = requests.post(
             "https://threatfox-api.abuse.ch/api/v1/",

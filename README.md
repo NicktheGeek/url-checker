@@ -69,8 +69,8 @@ meant to be committed.
 | VirusTotal | Yes | 70+ engine consensus; free tier is 4 req/min, 500/day |
 | urlscan.io | Yes | Actually visits the URL in a sandbox -- best for brand-new domains |
 | IPQualityScore | Yes | Heuristic risk scoring (domain age, typosquatting, etc.) |
-| URLhaus | No (optional key raises rate limit) | Malware distribution URLs |
-| ThreatFox | No (optional key raises rate limit) | Malware/C2 indicators |
+| URLhaus | Yes (shared abuse.ch key) | Malware distribution URLs |
+| ThreatFox | Yes (shared abuse.ch key) | Malware/C2 indicators |
 | PhishTank | Yes | Community-reported phishing |
 
 ## Adding a source later
