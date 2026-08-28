@@ -274,6 +274,35 @@
   .history-row .hr-actions { display: flex; gap: 0.5rem; margin: 0.8rem 0 0.2rem; }
   .empty-state { color: var(--text-muted); font-size: 0.9rem; padding: 1.5rem 0; text-align: center; }
 
+  /* Settings tab */
+  .settings-group {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.9rem 1rem;
+    margin-bottom: 0.75rem;
+  }
+  .settings-group-header { display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem; }
+  .settings-group-label { font-weight: 600; font-size: 0.92rem; }
+  .settings-group-header a { font-size: 0.8rem; color: var(--accent); white-space: nowrap; }
+  .settings-group-note { color: var(--text-muted); font-size: 0.8rem; margin-top: 0.2rem; }
+  .settings-field { margin-top: 0.65rem; }
+  .settings-field label { display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.25rem; }
+  .settings-input-wrap { display: flex; gap: 0.4rem; }
+  .settings-input-wrap input {
+    flex: 1;
+    min-width: 0;
+    padding: 0.55rem 0.8rem;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 0.88rem;
+    font-family: inherit;
+  }
+  .settings-input-wrap input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .settings-toggle { flex-shrink: 0; }
+
   @keyframes cardIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   @keyframes popIn { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: none; } }
@@ -319,6 +348,7 @@
     <button class="tab-btn active" data-tab="check" id="tabbtn-check" role="tab" aria-selected="true" aria-controls="tab-check">Check</button>
     <button class="tab-btn" data-tab="batch" id="tabbtn-batch" role="tab" aria-selected="false" aria-controls="tab-batch">Batch</button>
     <button class="tab-btn" data-tab="history" id="tabbtn-history" role="tab" aria-selected="false" aria-controls="tab-history">History</button>
+    <button class="tab-btn" data-tab="settings" id="tabbtn-settings" role="tab" aria-selected="false" aria-controls="tab-settings">Settings</button>
   </nav>
 
   <main>
@@ -364,6 +394,16 @@
     </div>
     <div id="historyList"></div>
   </section>
+
+  <!-- Settings tab -->
+  <section class="tab-panel" id="tab-settings" role="tabpanel" aria-labelledby="tabbtn-settings" tabindex="0">
+    <p class="hint">Keys are written straight into your local <code>.env</code> file and take effect on your next check -- no restart needed. Nothing here is sent anywhere except the request each service's own check already makes.</p>
+    <div id="settingsList"><div class="empty-state">Loading...</div></div>
+    <div style="margin-top: 1rem; display: flex; align-items: center; gap: 0.75rem;">
+      <button class="primary" id="settingsSaveBtn">Save Settings</button>
+      <span id="settingsStatus" class="hint" style="margin: 0;"></span>
+    </div>
+  </section>
   </main>
 </div>
 
@@ -406,6 +446,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.setAttribute('aria-selected', 'true');
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
     if (btn.dataset.tab === 'history') loadHistory();
+    if (btn.dataset.tab === 'settings' && !settingsLoaded) { settingsLoaded = true; loadSettings(); }
   });
 });
 
@@ -738,6 +779,108 @@ function buildHistoryRow(entry) {
   row.appendChild(body);
   return row;
 }
+
+// ---------------------------------------------------------------------------
+// Settings tab
+// ---------------------------------------------------------------------------
+const settingsList = document.getElementById('settingsList');
+const settingsSaveBtn = document.getElementById('settingsSaveBtn');
+const settingsStatus = document.getElementById('settingsStatus');
+let settingsLoaded = false;
+
+async function loadSettings() {
+  settingsList.innerHTML = '<div class="empty-state">Loading...</div>';
+  try {
+    const resp = await fetch('/settings');
+    const schema = await resp.json();
+    settingsList.innerHTML = '';
+    schema.forEach(service => settingsList.appendChild(buildSettingsGroup(service)));
+  } catch (err) {
+    settingsList.innerHTML = '<div class="empty-state">Could not load settings.</div>';
+  }
+}
+
+function buildSettingsGroup(service) {
+  const group = document.createElement('div');
+  group.className = 'settings-group';
+
+  const header = document.createElement('div');
+  header.className = 'settings-group-header';
+  const label = document.createElement('span');
+  label.className = 'settings-group-label';
+  label.textContent = service.label;
+  header.appendChild(label);
+  if (service.signup) {
+    const a = document.createElement('a');
+    a.href = service.signup;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.textContent = 'Get a key ->';
+    header.appendChild(a);
+  }
+  group.appendChild(header);
+
+  if (service.note) {
+    const note = document.createElement('div');
+    note.className = 'settings-group-note';
+    note.textContent = service.note;
+    group.appendChild(note);
+  }
+
+  service.fields.forEach(field => {
+    const row = document.createElement('div');
+    row.className = 'settings-field';
+    const flabel = document.createElement('label');
+    flabel.textContent = field.label;
+    const wrap = document.createElement('div');
+    wrap.className = 'settings-input-wrap';
+    const input = document.createElement('input');
+    input.type = 'password';
+    input.autocomplete = 'off';
+    input.spellcheck = false;
+    input.dataset.keys = field.keys.join(',');
+    input.value = field.value || '';
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'ghost settings-toggle';
+    toggle.textContent = '\u{1F441}';
+    toggle.setAttribute('aria-label', 'Show or hide this value');
+    toggle.addEventListener('click', () => {
+      input.type = input.type === 'password' ? 'text' : 'password';
+    });
+    wrap.appendChild(input);
+    wrap.appendChild(toggle);
+    row.appendChild(flabel);
+    row.appendChild(wrap);
+    group.appendChild(row);
+  });
+
+  return group;
+}
+
+settingsSaveBtn.addEventListener('click', async () => {
+  const values = {};
+  document.querySelectorAll('#settingsList input[data-keys]').forEach(input => {
+    input.dataset.keys.split(',').forEach(key => { values[key] = input.value; });
+  });
+  settingsSaveBtn.disabled = true;
+  settingsStatus.textContent = 'Saving...';
+  try {
+    const resp = await fetch('/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(values),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Save failed');
+    settingsStatus.textContent = 'Saved -- takes effect on your next check.';
+  } catch (err) {
+    settingsStatus.textContent = 'Error: ' + (err.message || err);
+  } finally {
+    settingsSaveBtn.disabled = false;
+    setTimeout(() => { settingsStatus.textContent = ''; }, 4000);
+  }
+});
 </script>
 </body>
 </html>
