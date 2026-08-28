@@ -14,7 +14,7 @@ source .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-Open `.env` and paste in whichever API keys you already have. Leave the rest
+Rename `sample.env` to `.env`. Open `.env` and paste in whichever API keys you already have. Leave the rest
 blank for now -- those sources will just show as "skipped", not break
 anything. See the comments in `.env` for where to get each key.
 
