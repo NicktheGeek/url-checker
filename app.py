@@ -9,6 +9,7 @@ Then open: http://127.0.0.1:5050
 import csv
 import io
 import json
+import os
 
 from flask import Flask, Response, jsonify, render_template, request, stream_with_context
 
@@ -16,10 +17,18 @@ import history
 from aggregator import check_url, check_url_streaming
 
 app = Flask(__name__)
+# Template edits should show up on refresh regardless of debug mode -- this
+# only affects Jinja re-reading .html files, not Werkzeug's debugger/reloader.
+app.config["TEMPLATES_AUTO_RELOAD"] = True
 
 
-def _normalize_url(raw: str) -> str:
-    url = (raw or "").strip()
+def _normalize_url(raw) -> str:
+    """Normalize a URL, or return "" for anything that isn't a non-empty string
+    (missing scheme, wrong type, blank) so callers can treat "" as invalid input
+    instead of the request crashing on the caller's malformed JSON."""
+    if not isinstance(raw, str):
+        return ""
+    url = raw.strip()
     if url and not (url.startswith("http://") or url.startswith("https://")):
         url = "http://" + url
     return url
@@ -73,8 +82,10 @@ def check_batch_stream():
     sources still run in parallel). Events carry an `index` so the frontend
     knows which URL a `result`/`item-done` belongs to."""
     data = request.get_json(silent=True) or {}
-    raw_urls = data.get("urls") or []
-    urls = [_normalize_url(u) for u in raw_urls if (u or "").strip()]
+    raw_urls = data.get("urls")
+    if not isinstance(raw_urls, list):
+        raw_urls = []
+    urls = [n for n in (_normalize_url(u) for u in raw_urls) if n]
 
     def generate():
         yield _sse("start", {"total": len(urls)})
@@ -136,4 +147,9 @@ def history_export_csv(report_id):
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5050, threaded=True)
+    # Debug mode (auto-reload + Werkzeug's interactive traceback/code-exec console)
+    # is opt-in, not default: a bad request that trips an unhandled exception
+    # would otherwise hand back a live Python console. Turn it on deliberately
+    # for active development with:  FLASK_DEBUG=1 python app.py
+    debug = os.environ.get("FLASK_DEBUG") == "1"
+    app.run(debug=debug, port=5050, threaded=True)

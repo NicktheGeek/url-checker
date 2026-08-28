@@ -33,6 +33,14 @@ then open http://127.0.0.1:5050 in your browser. (Port 5000 is skipped
 because macOS's AirPlay Receiver claims it by default -- if you've disabled
 that in System Settings, feel free to change the port back in `app.py`.)
 
+Flask's debug mode (auto-reload + the interactive Werkzeug traceback/code
+console) is off by default -- a bad request that trips an unhandled
+exception would otherwise hand back a live Python console. Turn it on for
+active development with:
+```bash
+FLASK_DEBUG=1 python app.py
+```
+
 ## Web UI features
 
 - **Check** -- single-URL check. Results stream in via Server-Sent Events as
