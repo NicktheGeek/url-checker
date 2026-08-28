@@ -11,10 +11,12 @@ import io
 import json
 import os
 
+from dotenv import load_dotenv
 from flask import Flask, Response, jsonify, render_template, request, stream_with_context
 
 import history
 from aggregator import check_url, check_url_streaming
+from env_store import ALL_KEYS, SETTINGS_SCHEMA, read_current_values, save_values
 
 app = Flask(__name__)
 # Template edits should show up on refresh regardless of debug mode -- this
@@ -41,6 +43,44 @@ def _sse(event: str, data: dict) -> str:
 @app.route("/")
 def index():
     return render_template("index.html")
+
+
+@app.route("/settings")
+def settings():
+    """Every known API key field, grouped by service, with whatever value
+    is currently in .env filled in -- lets the Settings tab render an
+    editable form instead of someone hand-editing .env."""
+    current = read_current_values()
+    schema = [
+        {**service, "fields": [{**f, "value": current.get(f["keys"][0], "")} for f in service["fields"]]}
+        for service in SETTINGS_SCHEMA
+    ]
+    return jsonify(schema)
+
+
+@app.route("/settings", methods=["POST"])
+def settings_save():
+    """Write submitted values into .env (only known keys; anything else in
+    the body is ignored) and reload os.environ so the very next check uses
+    them -- no restart needed."""
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({"error": "Expected a JSON object of key -> value"}), 400
+
+    new_values = {}
+    for key, value in data.items():
+        if key not in ALL_KEYS:
+            continue
+        if not isinstance(value, str):
+            return jsonify({"error": f"{key}: value must be a string"}), 400
+        value = value.strip()
+        if "\n" in value or "\r" in value:
+            return jsonify({"error": f"{key}: value can't contain a newline"}), 400
+        new_values[key] = value
+
+    save_values(new_values)
+    load_dotenv(override=True)  # so the change takes effect immediately
+    return jsonify({"ok": True})
 
 
 @app.route("/check", methods=["POST"])
