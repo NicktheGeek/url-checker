@@ -7,7 +7,16 @@ import time
 
 from dotenv import load_dotenv
 
-load_dotenv()  # populate os.environ from .env before checkers.py reads it
+from env_store import ENV_PATH
+
+# Explicit path, not dotenv's own upward-search default: that default walks
+# up from this file's own location, which only happens to match ENV_PATH
+# for an unfrozen/dev run (both are the repo root). Frozen into a packaged
+# app, this file lives inside the bundle while ENV_PATH is a separate
+# per-user data directory -- dotenv's default search would never find it,
+# silently leaving os.environ empty even though the file itself (and the
+# Settings tab, which reads it directly) is correct.
+load_dotenv(ENV_PATH)  # populate os.environ from .env before checkers.py reads it
 
 from checkers import ALL_CHECKS  # noqa: E402  (must come after load_dotenv)
 
