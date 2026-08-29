@@ -1,0 +1,120 @@
+name: Build & publish installers
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15-arm64
+            arch: arm64
+          - runner: macos-15-intel
+            arch: x86_64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Compute release tag
+        shell: bash
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          if [ -z "$TAG" ]; then TAG="dev-${{ github.run_number }}"; fi
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt -r installer/requirements-build.txt
+
+      - name: Build app icon (.icns)
+        run: installer/macos/make_icns.sh
+
+      - name: Build with PyInstaller
+        run: pyinstaller installer/desktop_app.spec
+
+      - name: Ad-hoc codesign
+        run: codesign --force --deep --sign - "dist/URL Checker.app"
+
+      - name: Build .dmg
+        run: |
+          installer/macos/build_dmg.sh "dist/URL Checker.app" "dist/URL-Checker-${TAG}-mac-${{ matrix.arch }}.dmg"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dmg-${{ matrix.arch }}
+          path: dist/*.dmg
+          if-no-files-found: error
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Compute release tag
+        shell: bash
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          if [ -z "$TAG" ]; then TAG="dev-${{ github.run_number }}"; fi
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+          echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt -r installer/requirements-build.txt pillow
+
+      - name: Build app icon (.ico)
+        run: python installer/windows/make_ico.py
+
+      - name: Build with PyInstaller
+        run: pyinstaller installer/desktop_app.spec
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Compile installer
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DMyAppVersion="$env:VERSION" installer\windows\url_checker.iss
+
+      - name: Move installer to dist/
+        shell: bash
+        run: |
+          mkdir -p dist
+          mv "installer/windows/output/URL-Checker-Setup.exe" "dist/URL-Checker-${TAG}-Setup.exe"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: windows-installer
+          path: dist/*.exe
+          if-no-files-found: error
+
+  publish:
+    needs: [build-macos, build-windows]
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          path: dist-all
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          files: |
+            dist-all/*.dmg
+            dist-all/*.exe

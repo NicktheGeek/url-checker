@@ -6,10 +6,10 @@ SETTINGS_SCHEMA is the one place that lists every key this app knows about --
 sample.env's comments and the README's source table are meant to stay in
 sync with it, but this is the copy the app itself reads.
 """
-from pathlib import Path
+from app_paths import BASE_DIR, DATA_DIR
 
-ENV_PATH = Path(__file__).parent / ".env"
-SAMPLE_ENV_PATH = Path(__file__).parent / "sample.env"
+ENV_PATH = DATA_DIR / ".env"
+SAMPLE_ENV_PATH = BASE_DIR / "sample.env"
 
 SETTINGS_SCHEMA = [
     {

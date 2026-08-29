@@ -16,9 +16,14 @@ from flask import Flask, Response, jsonify, render_template, request, stream_wit
 
 import history
 from aggregator import check_url, check_url_streaming
+from app_paths import BASE_DIR
 from env_store import ALL_KEYS, SETTINGS_SCHEMA, mask_value, read_current_values, save_values
 
-app = Flask(__name__)
+# Explicit template/static folders (rather than Flask's __name__-derived
+# default) so this still resolves correctly when frozen into a PyInstaller
+# bundle -- BASE_DIR collapses to Path(__file__).parent unfrozen, i.e.
+# exactly Flask's own default, so this is a no-op for every normal run.
+app = Flask(__name__, template_folder=str(BASE_DIR / "templates"), static_folder=str(BASE_DIR / "static"))
 # Template edits should show up on refresh regardless of debug mode -- this
 # only affects Jinja re-reading .html files, not Werkzeug's debugger/reloader.
 app.config["TEMPLATES_AUTO_RELOAD"] = True

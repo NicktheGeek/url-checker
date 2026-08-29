@@ -8,9 +8,10 @@ the checks.
 import json
 import sqlite3
 import time
-from pathlib import Path
 
-DB_PATH = Path(__file__).parent / "history.db"
+from app_paths import DATA_DIR
+
+DB_PATH = DATA_DIR / "history.db"
 
 
 def _connect():

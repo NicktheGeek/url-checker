@@ -18,7 +18,8 @@ python start.py --setup-only
 if errorlevel 1 exit /b 1
 
 echo Building app icon ...
-"%ROOT%\.venv\Scripts\python.exe" -c "from PIL import Image; img = Image.open('static/icons/icon-512.png'); img.save('static/icons/app.ico', sizes=[(16,16),(32,32),(48,48),(256,256)])"
+"%ROOT%\.venv\Scripts\python.exe" -m pip install -q pillow
+"%ROOT%\.venv\Scripts\python.exe" "%ROOT%\installer\windows\make_ico.py"
 
 echo Creating Desktop shortcut ...
 powershell -NoProfile -Command ^

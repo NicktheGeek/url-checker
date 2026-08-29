@@ -9,3 +9,5 @@ dist/
 static/icons/AppIcon.iconset/
 static/icons/app.icns
 static/icons/app.ico
+installer/windows/output/
+build/

@@ -5,7 +5,33 @@ pasting it into 3+ separate websites), plus a couple of local heuristics
 (userinfo tricks like `https://fedex@evil.com`, punycode domains, etc.) that
 need no API key at all.
 
-## Quick start (recommended)
+## Download a prebuilt app (easiest -- no Python needed at all)
+
+Every [release](https://github.com/NicktheGeek/url-checker/releases) has a
+Mac and Windows installer attached, built automatically by CI:
+
+- **Mac:** `URL-Checker-<version>-mac-arm64.dmg` (Apple Silicon) or
+  `URL-Checker-<version>-mac-x86_64.dmg` (Intel). Open it, drag **URL
+  Checker** into **Applications**. First launch: since it isn't signed by a
+  paid Apple Developer certificate, Gatekeeper will say it "cannot be
+  verified" -- right-click the app, choose **Open**, confirm once. After
+  that it opens normally.
+- **Windows:** `URL-Checker-<version>-Setup.exe`. Run it, follow the
+  installer (Program Files, Start Menu shortcut, optional Desktop shortcut).
+  It isn't signed either, so SmartScreen will show "Windows protected your
+  PC" -- click **More info**, then **Run anyway**. Needs the
+  [Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/),
+  which almost every current Windows 10/11 machine already has.
+
+To get a newer version later, just download and run the newest release's
+installer again -- it replaces the previous install in place, no
+uninstall/reinstall dance needed. (Windows builds are x86_64 only --
+ARM64 Windows isn't supported.)
+
+This installs the exact same app as everything below, just without needing
+git, Python, or a terminal at all.
+
+## Quick start (from source)
 
 You need Python 3 installed (nothing else -- no manual `pip`/`venv` commands).
 
@@ -112,11 +138,11 @@ FLASK_DEBUG=1 python app.py
 `history.db` is gitignored, same as `.env` -- it's local-only and never
 meant to be committed.
 
-## Native desktop app (optional)
+## Native desktop app, built from your own checkout (optional)
 
-Want a real app instead of a browser tab -- its own window, no address bar,
-a Dock (Mac) / taskbar (Windows) icon you launch without touching a
-Terminal? Build one:
+Already cloned this repo and want a native window wrapping *your own*
+checkout specifically (your own `.venv`, no waiting on a release) instead of
+downloading the prebuilt installer above? Build one:
 
 - **Mac:** `./build_mac_app.sh`
 - **Windows:** `build_windows_app.bat` (written and documented, but not
