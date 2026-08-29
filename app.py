@@ -17,7 +17,7 @@ from flask import Flask, Response, jsonify, render_template, request, stream_wit
 import history
 from aggregator import check_url, check_url_streaming
 from app_paths import BASE_DIR
-from env_store import ALL_KEYS, SETTINGS_SCHEMA, mask_value, read_current_values, save_values
+from env_store import ALL_KEYS, ENV_PATH, SETTINGS_SCHEMA, mask_value, read_current_values, save_values
 
 # Explicit template/static folders (rather than Flask's __name__-derived
 # default) so this still resolves correctly when frozen into a PyInstaller
@@ -96,7 +96,7 @@ def settings_save():
         new_values[key] = value
 
     save_values(new_values)
-    load_dotenv(override=True)  # so the change takes effect immediately
+    load_dotenv(ENV_PATH, override=True)  # so the change takes effect immediately
     return jsonify({"ok": True})
 
 
