@@ -32,4 +32,11 @@ def _user_data_dir(app_name: str) -> Path:
 # isn't writable at runtime on Windows), so this is a real requirement, not
 # just tidiness. Unfrozen: identical to today's `Path(__file__).parent`.
 DATA_DIR = _user_data_dir("URL Checker") if FROZEN else Path(__file__).parent
+
+# Captured before mkdir below (which is exist_ok=True -- a no-op if the
+# directory is already there, never recreates/wipes it) so callers can log
+# whether this run found an existing data dir or started fresh, without
+# that information being destroyed by the very mkdir call that needs to run
+# either way.
+DATA_DIR_EXISTED = DATA_DIR.exists()
 DATA_DIR.mkdir(parents=True, exist_ok=True)
