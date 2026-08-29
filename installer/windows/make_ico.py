@@ -11,7 +11,10 @@ import os
 
 from PIL import Image
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# This file lives at <repo>/installer/windows/make_ico.py, so reaching the
+# repo root needs three levels up (windows -> installer -> repo root), not
+# two -- getting this wrong silently points ROOT at installer/ instead.
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SRC = os.path.join(ROOT, "static", "icons", "icon-512.png")
 OUT = os.path.join(ROOT, "static", "icons", "app.ico")
 
