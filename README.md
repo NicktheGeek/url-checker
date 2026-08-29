@@ -112,6 +112,44 @@ FLASK_DEBUG=1 python app.py
 `history.db` is gitignored, same as `.env` -- it's local-only and never
 meant to be committed.
 
+## Native desktop app (optional)
+
+Want a real app instead of a browser tab -- its own window, no address bar,
+a Dock (Mac) / taskbar (Windows) icon you launch without touching a
+Terminal? Build one:
+
+- **Mac:** `./build_mac_app.sh`
+- **Windows:** `build_windows_app.bat` (written and documented, but not
+  tested on Windows -- this project was built on macOS; needs the
+  [Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/),
+  which almost every current Windows 10/11 machine already has)
+
+**Mac:** this creates `dist/URL Checker.app`. Double-click it from Finder,
+or drag it to `/Applications`. First launch may still get an "unidentified
+developer" Gatekeeper prompt the same way `start.command` does -- right-click,
+choose **Open**, confirm once.
+
+**Windows:** this creates a `URL Checker.lnk` shortcut on your Desktop.
+Double-click it to launch.
+
+Either way, it's the *same* app underneath -- same `.env`, same `history.db`,
+same LAN binding -- just wrapped in a native window instead of a browser tab.
+A few things worth knowing:
+
+- It shares one `history.db`/`.env` with `start.command`/`start.py`/
+  `python app.py` -- nothing is duplicated or goes out of sync no matter
+  which way you launch it.
+- Don't run the desktop app and `start.command`/`python app.py` at the same
+  time -- both bind port 5050, and whichever started second will fail to
+  bind (you'll still see a window, but it'll be showing the other instance).
+- Phone/tablet LAN access and "Add to Home Screen" still work exactly as
+  before while the desktop app is running -- it's the same server.
+- If it won't launch, check the log: `~/Library/Logs/URL Checker.log` (Mac)
+  or `%LOCALAPPDATA%\URL Checker\log.txt` (Windows).
+- If you move this project folder afterward, re-run the build script -- the
+  app points at this specific folder's `.venv`, so it needs rebuilding after
+  a move.
+
 ## Sources checked
 
 | Source | Needs a key? | Notes |

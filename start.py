@@ -62,10 +62,21 @@ def lan_ip():
         s.close()
 
 
-def main():
+def setup():
+    """venv + dependencies + .env, no server. Shared with build_mac_app.sh /
+    build_windows_app.bat via `python start.py --setup-only` so the desktop
+    app build doesn't duplicate this bootstrap logic."""
     ensure_venv()
     ensure_deps()
     ensure_env_file()
+
+
+def main():
+    if "--setup-only" in sys.argv:
+        setup()
+        return
+
+    setup()
 
     ip = lan_ip()
     print()

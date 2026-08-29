@@ -5,3 +5,7 @@ __pycache__/
 venv/
 history.db
 .claude*
+dist/
+static/icons/AppIcon.iconset/
+static/icons/app.icns
+static/icons/app.ico
