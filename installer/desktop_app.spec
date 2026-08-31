@@ -19,6 +19,68 @@ import sys
 # bare "../".
 ROOT = os.path.abspath(os.path.join(SPECPATH, ".."))
 
+# Set by the release workflow to the tag with its leading "v" stripped
+# (e.g. "3.0.3"); left at "0.0.0" for a local `pyinstaller` run so nothing
+# breaks outside CI. Feeds macOS's CFBundleShortVersionString/CFBundleVersion
+# and the Windows .exe's own FileVersion/ProductVersion resource below --
+# separately, the Windows *installer* gets this same value via Inno Setup's
+# /DMyAppVersion, which doesn't go through this spec at all.
+VERSION = os.environ.get("VERSION", "0.0.0")
+
+
+def _version_tuple(version_string):
+    """"3.0.3" -> (3, 0, 3, 0); anything that doesn't parse as plain dotted
+    integers (the "dev-<run_number>" fallback tag, "0.0.0" itself) -> all
+    zeros, since a Windows version resource requires 4 actual integers, not
+    an arbitrary string like CFBundleShortVersionString accepts."""
+    parts = [int(p) for p in version_string.split(".") if p.isdigit()]
+    parts = (parts + [0, 0, 0, 0])[:4]
+    return tuple(parts)
+
+
+# Windows only: an embedded version resource (Explorer's Properties >
+# Details tab) -- built inline rather than as a separate version-file
+# because the values need to come from VERSION above, computed at build
+# time. PyInstaller.utils.win32.versioninfo imports `pefile`, which is only
+# installed on Windows (PyInstaller's own platform-conditional dependency),
+# so this whole block must stay inside the win32 check -- importing it
+# unconditionally breaks the macOS build.
+win_version_info = None
+if sys.platform == "win32":
+    from PyInstaller.utils.win32.versioninfo import (
+        FixedFileInfo,
+        StringFileInfo,
+        StringStruct,
+        StringTable,
+        VarFileInfo,
+        VarStruct,
+        VSVersionInfo,
+    )
+
+    _vt = _version_tuple(VERSION)
+    win_version_info = VSVersionInfo(
+        ffi=FixedFileInfo(filevers=_vt, prodvers=_vt),
+        kids=[
+            StringFileInfo(
+                [
+                    StringTable(
+                        "040904B0",
+                        [
+                            StringStruct("CompanyName", "Nick Croft"),
+                            StringStruct("FileDescription", "URL Checker"),
+                            StringStruct("FileVersion", VERSION),
+                            StringStruct("InternalName", "URL Checker"),
+                            StringStruct("OriginalFilename", "URL Checker.exe"),
+                            StringStruct("ProductName", "URL Checker"),
+                            StringStruct("ProductVersion", VERSION),
+                        ],
+                    )
+                ]
+            ),
+            VarFileInfo([VarStruct("Translation", [1033, 1200])]),
+        ],
+    )
+
 a = Analysis(
     [os.path.join(ROOT, "desktop_app.py")],
     pathex=[ROOT],
@@ -55,6 +117,7 @@ exe = EXE(
     exclude_binaries=True,
     name="URL Checker",
     console=False,
+    version=win_version_info,
 )
 coll = COLLECT(exe, a.binaries, a.datas, name="URL Checker")
 
@@ -64,5 +127,6 @@ if sys.platform == "darwin":
         name="URL Checker.app",
         icon=os.path.join(ROOT, "static", "icons", "app.icns"),
         bundle_identifier="com.urlchecker.desktop",
-        info_plist={"NSHighResolutionCapable": True},
+        version=VERSION,
+        info_plist={"NSHighResolutionCapable": True, "CFBundleVersion": VERSION},
     )

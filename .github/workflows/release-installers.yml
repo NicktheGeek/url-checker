@@ -32,6 +32,7 @@ jobs:
           TAG="${{ github.event.release.tag_name }}"
           if [ -z "$TAG" ]; then TAG="dev-${{ github.run_number }}"; fi
           echo "TAG=$TAG" >> "$GITHUB_ENV"
+          echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
 
       - name: Install dependencies
         run: pip install -r requirements.txt -r installer/requirements-build.txt
