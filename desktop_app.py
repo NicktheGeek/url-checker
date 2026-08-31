@@ -18,9 +18,6 @@ import time
 import webview
 
 from app import app
-from app_paths import DATA_DIR, DATA_DIR_EXISTED, FROZEN
-from env_store import ENV_PATH
-from history import DB_PATH
 
 PORT = 5050
 
@@ -59,26 +56,8 @@ def _wait_until_ready(timeout=10.0):
     return False
 
 
-def _log_data_dir_status():
-    """One line per launch recording where this run considers its
-    persistent data to live and whether that location -- and the .env/
-    history.db inside it -- were already there before this process touched
-    them. Logged after _redirect_stdio_to_log() so it lands in the same
-    log file as everything else, not a pre-redirect stdout that may not
-    even be attached to anything. Exists so a future "my keys/history
-    disappeared after updating" report can be answered by reading this log
-    across the old and new version's launches, instead of reconstructing it
-    after the fact from file birth-times."""
-    print(
-        f"[startup] frozen={FROZEN} data_dir={DATA_DIR} "
-        f"(existed_before_this_run={DATA_DIR_EXISTED}) "
-        f"env_exists={ENV_PATH.exists()} history_exists={DB_PATH.exists()}"
-    )
-
-
 def main():
     _redirect_stdio_to_log()
-    _log_data_dir_status()
     threading.Thread(target=_run_flask, daemon=True).start()
     _wait_until_ready()
     webview.create_window(
