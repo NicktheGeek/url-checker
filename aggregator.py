@@ -1,10 +1,19 @@
 """
 Runs every checker in checkers.ALL_CHECKS concurrently against one URL and
 rolls the results up into a single verdict.
+
+Before any of that: _resolve_redirects follows the URL's redirect chain to
+find what it actually points at. An email/wrapper link (Outlook Safelinks,
+a URL shortener, click-tracking, ...) checked as submitted would only ever
+tell you the wrapper's own domain is fine -- every checker in ALL_CHECKS
+runs against the *final* URL that resolves to, not the one the user pasted
+in.
 """
 import concurrent.futures
 import time
+import urllib.parse
 
+import requests
 from dotenv import load_dotenv
 
 from env_store import ENV_PATH
@@ -18,9 +27,72 @@ from env_store import ENV_PATH
 # Settings tab, which reads it directly) is correct.
 load_dotenv(ENV_PATH)  # populate os.environ from .env before checkers.py reads it
 
-from checkers import ALL_CHECKS  # noqa: E402  (must come after load_dotenv)
+from checkers import ALL_CHECKS, TIMEOUT  # noqa: E402  (must come after load_dotenv)
 
 STATUS_ORDER = {"flagged": 0, "unknown": 1, "error": 2, "clean": 3, "skipped": 4}
+
+REDIRECT_SERVICE = "Redirect Chain"
+
+
+def _resolve_redirects(url: str) -> dict:
+    """Follow url's redirect chain and report what it actually points at.
+
+    Not folded into checkers.py: every function there is a peer, dispatched
+    in parallel against the same URL by _run_checks. This one is different
+    on purpose -- it has to run *before* the others and its result changes
+    what URL they check, so aggregator.py owns it directly instead of
+    pretending it's just one more uniform source.
+
+    A redirect on its own isn't suspicious -- most newsletter/email links
+    go through one -- so this reports "unknown" (a yellow flag: distinct
+    from the actual threat-intel sources, worth a second look) rather than
+    "flagged" (red, actively bad). It's excluded from _build_report's
+    flagged-count either way, so a redirect alone never flips the verdict
+    to SUSPICIOUS by itself.
+    """
+    session = requests.Session()
+    session.max_redirects = 10  # a real chain is rarely more than a few hops;
+    # bounds worst-case latency and doubles as its own signal something's off
+    try:
+        resp = session.get(
+            url,
+            timeout=TIMEOUT,
+            allow_redirects=True,
+            stream=True,  # only need .url/.history, never the final body
+            headers={"User-Agent": "Mozilla/5.0 (compatible; url-checker/1.0)"},
+        )
+        resp.close()
+    except requests.RequestException as exc:
+        return {
+            "service": REDIRECT_SERVICE,
+            "status": "error",
+            "summary": f"Could not follow redirects: {exc}",
+            "final_url": url,
+        }
+
+    hops = [r.url for r in resp.history]
+    final_url = resp.url
+    if not hops:
+        return {
+            "service": REDIRECT_SERVICE,
+            "status": "clean",
+            "summary": "No redirects -- this is already the final URL",
+            "final_url": final_url,
+        }
+
+    chain = hops + [final_url]
+    hosts = [urllib.parse.urlparse(h).hostname or h for h in chain]
+    return {
+        "service": REDIRECT_SERVICE,
+        "status": "unknown",
+        "summary": (
+            f"Redirected {len(hops)} time(s) before reaching the final destination -- "
+            "not necessarily suspicious, but the checks below ran against the real "
+            "target, not the link you pasted: " + " -> ".join(hosts)
+        ),
+        "detail": {"chain": chain},
+        "final_url": final_url,
+    }
 
 
 def _run_checks(url: str, timeout_per_check: float = 30.0):
@@ -43,7 +115,7 @@ def _run_checks(url: str, timeout_per_check: float = 30.0):
                 }
 
 
-def _build_report(url: str, results: list, started: float) -> dict:
+def _build_report(url: str, results: list, started: float, checked_url: str | None = None) -> dict:
     results = sorted(results, key=lambda r: STATUS_ORDER.get(r["status"], 9))
 
     flagged = [r for r in results if r["status"] == "flagged"]
@@ -60,7 +132,7 @@ def _build_report(url: str, results: list, started: float) -> dict:
         verdict = "NO ISSUES FOUND"
         verdict_summary = f"{len(checked)} active source(s) checked, none flagged it"
 
-    return {
+    report = {
         "url": url,
         "verdict": verdict,
         "verdict_summary": verdict_summary,
@@ -69,25 +141,37 @@ def _build_report(url: str, results: list, started: float) -> dict:
         "sources_skipped": len(skipped),
         "elapsed_seconds": round(time.time() - started, 2),
     }
+    if checked_url and checked_url != url:
+        # Only present when redirects actually moved us somewhere else --
+        # callers that don't know about this field are unaffected.
+        report["checked_url"] = checked_url
+    return report
 
 
 def check_url(url: str, timeout_per_check: float = 30.0) -> dict:
-    """Run every check in parallel and return an aggregate report."""
+    """Resolve redirects, then run every check in parallel against the
+    final URL and return an aggregate report."""
     started = time.time()
-    results = list(_run_checks(url, timeout_per_check))
-    return _build_report(url, results, started)
+    redirect_result = _resolve_redirects(url)
+    effective_url = redirect_result["final_url"]
+    results = [redirect_result] + list(_run_checks(effective_url, timeout_per_check))
+    return _build_report(url, results, started, checked_url=effective_url)
 
 
 def check_url_streaming(url: str, timeout_per_check: float = 30.0):
     """Like check_url, but yields progress as it happens.
 
-    Yields ("result", result_dict) for each source as it finishes, in
-    whatever order they complete, then finally yields ("done", report_dict)
-    with the same shape check_url() returns.
+    Yields ("result", result_dict) for each source as it finishes -- the
+    redirect-chain result first, since every other source depends on it --
+    then finally yields ("done", report_dict) with the same shape
+    check_url() returns.
     """
     started = time.time()
-    results = []
-    for result in _run_checks(url, timeout_per_check):
+    redirect_result = _resolve_redirects(url)
+    effective_url = redirect_result["final_url"]
+    results = [redirect_result]
+    yield ("result", redirect_result)
+    for result in _run_checks(effective_url, timeout_per_check):
         results.append(result)
         yield ("result", result)
-    yield ("done", _build_report(url, results, started))
+    yield ("done", _build_report(url, results, started, checked_url=effective_url))

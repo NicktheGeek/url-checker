@@ -28,6 +28,8 @@ def main():
         url = "https://" + url
     print(f"Checking: {url}\n")
     report = check_url(url)
+    if report.get("checked_url"):
+        print(f"(redirected to: {report['checked_url']})\n")
 
     name_width = max(len(r["service"]) for r in report["results"]) + 2
     for r in report["results"]:

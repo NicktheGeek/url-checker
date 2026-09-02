@@ -178,8 +178,18 @@ A few things worth knowing:
 
 ## Sources checked
 
+Redirects are resolved *first*, before any source below runs: an email
+wrapper link (Outlook Safelinks, a URL shortener, click-tracking, ...)
+checked as pasted would only ever tell you the wrapper's own domain is
+fine. Every source in the table checks the final URL the chain actually
+leads to, not the one you pasted in. A redirect on its own isn't
+suspicious -- most newsletter/email links go through one -- so it shows up
+as a yellow "unknown" flag (worth a look at the chain) rather than a red
+one, and never flips the overall verdict to SUSPICIOUS by itself.
+
 | Source | Needs a key? | Notes |
 |---|---|---|
+| Redirect Chain | No | Follows redirects to the final destination; always runs first |
 | Local heuristics | No | Userinfo trick, punycode, http vs https, excessive subdomains |
 | Spamhaus DBL | No | Free DNS-based domain blocklist (spam/phish/malware/botnet) |
 | Google Safe Browsing | Yes | Same list Chrome itself uses |
